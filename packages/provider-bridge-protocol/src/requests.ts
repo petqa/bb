@@ -2,6 +2,7 @@ import {
   clientTurnRequestIdSchema,
   dynamicToolSchema,
   instructionModeSchema,
+  originalUserTextSchema,
   promptInputSchema,
   threadProviderCommandsStateSchema,
 } from "@bb/domain";
@@ -116,7 +117,12 @@ const turnInputFields = {
   options: bridgeExecutionOptionsSchema,
 };
 
-export const turnStartParamsSchema = z.object(turnInputFields).passthrough();
+export const turnStartParamsSchema = z
+  .object({
+    ...turnInputFields,
+    originalUserText: originalUserTextSchema.optional(),
+  })
+  .passthrough();
 
 export const turnSteerParamsSchema = z
   .object({

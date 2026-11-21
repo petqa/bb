@@ -1564,6 +1564,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       dynamicTools,
       instructionMode = "append",
       fork,
+      originalUserText,
     }) {
       return runThreadOperation({
         threadId,
@@ -1697,6 +1698,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
               options: execOpts,
               contributedEnv,
               instructions,
+              ...(originalUserText !== undefined ? { originalUserText } : {}),
             });
           }
 
@@ -2021,6 +2023,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       options: execOpts,
       contributedEnv,
       instructions,
+      originalUserText,
     }) {
       return runThreadOperation({
         threadId,
@@ -2067,6 +2070,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
             providerThreadId,
             input,
             clientRequestId,
+            ...(originalUserText !== undefined ? { originalUserText } : {}),
             options: toProviderExecutionContext({
               envVars: resolvedEnvironment.envVars,
               execOpts,

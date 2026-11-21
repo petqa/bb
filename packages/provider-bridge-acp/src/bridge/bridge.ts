@@ -10,6 +10,7 @@ import type {
   AvailableModel,
   ExtensionKind,
   JsonValue,
+  OriginalUserText,
   PromptInput,
   ReasoningLevel,
   SessionOptionSelections,
@@ -199,6 +200,7 @@ interface PendingAcpPermission {
 interface AcpPendingTurnInput {
   clientRequestId: string;
   input: PromptInput[];
+  originalUserText?: OriginalUserText;
   requestId: AcpBridgeRequestId | null;
   options: BridgeExecutionOptions;
 }
@@ -2409,6 +2411,7 @@ async function startAgentSession(
   const dialect = resolveAcpDialect({
     ...(params.dialectId === undefined ? {} : { dialectId: params.dialectId }),
     command: params.agent.command,
+    args: params.agent.args,
   });
   const translator = createAcpDeltaTranslator({
     cwd: params.cwd,
@@ -3312,6 +3315,15 @@ function runTurn(
         session.turnSettled = previousSession.turnSettled;
         session.awaitingFirstPrompt = false;
         const prompt = buildPromptContentBlocks(session, pending.input);
+        const promptMeta =
+          pending.originalUserText === undefined
+            ? undefined
+            : session.dialect.promptRequestMeta?.({
+                clientRequestId: pending.clientRequestId,
+                text: pending.originalUserText,
+              });
+        const hasPromptMeta =
+          promptMeta !== undefined && Object.keys(promptMeta).length > 0;
         let inputAccepted = false;
         let busyRetries = 0;
         session.turnStartedAtMs ??= Date.now();
@@ -3319,7 +3331,11 @@ function runTurn(
           session.promptRequestPending = true;
           const promptResult = session.connection.request({
             method: "session/prompt",
-            params: { sessionId: session.providerThreadId, prompt },
+            params: {
+              sessionId: session.providerThreadId,
+              ...(hasPromptMeta ? { _meta: promptMeta } : {}),
+              prompt,
+            },
             resultSchema: acpPromptResultSchema,
           });
           if (!inputAccepted) {
@@ -3920,6 +3936,7 @@ async function handleModelList(
   const dialect = resolveAcpDialect({
     dialectId,
     command: params.optionsAgent?.command ?? params.agent?.command ?? "",
+    args: params.optionsAgent?.args ?? params.agent?.args,
   });
   const resolvedDialectId = dialect.id;
   const declaredOptions = (): Promise<ThreadSessionOption[]> =>
@@ -4062,6 +4079,7 @@ function maintenanceTarget(
   const dialect = resolveAcpDialect({
     dialectId: decodeDialectId(providerOptions),
     command: launchSpec?.command ?? "",
+    ...(launchSpec ? { args: launchSpec.args } : {}),
   });
   return {
     maintenance: dialect.maintenance,
@@ -4264,6 +4282,9 @@ async function handleRequest(
       const pending: AcpPendingTurnInput = {
         clientRequestId: params.clientRequestId,
         input: params.input,
+        ...(params.originalUserText !== undefined
+          ? { originalUserText: params.originalUserText }
+          : {}),
         requestId: request.id,
         options: params.options,
       };

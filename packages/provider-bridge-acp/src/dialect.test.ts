@@ -5,6 +5,7 @@ import {
   GROK_ACP_DIALECT,
   OMP_ACP_DIALECT,
   OPENCODE_ACP_DIALECT,
+  QWEN_ACP_DIALECT,
   grokContextUsageFromPromptResult,
   grokContextWindowSizeFromSessionModels,
   registerAcpDialect,
@@ -23,9 +24,12 @@ describe("resolveAcpDialect", () => {
     expect(resolveAcpDialect({ dialectId: "opencode", command: "node" })).toBe(
       OPENCODE_ACP_DIALECT,
     );
+    expect(resolveAcpDialect({ dialectId: "qwen", command: "node" })).toBe(
+      QWEN_ACP_DIALECT,
+    );
   });
 
-  it("falls back to the launch executable's base name", () => {
+  it("falls back to the launch executable's base name or registry npx package", () => {
     expect(resolveAcpDialect({ command: "grok" })).toBe(GROK_ACP_DIALECT);
     expect(resolveAcpDialect({ command: "/usr/local/bin/grok" })).toBe(
       GROK_ACP_DIALECT,
@@ -39,6 +43,92 @@ describe("resolveAcpDialect", () => {
     expect(resolveAcpDialect({ command: "/usr/local/bin/opencode" })).toBe(
       OPENCODE_ACP_DIALECT,
     );
+    expect(resolveAcpDialect({ command: "/home/u/.local/bin/qwen" })).toBe(
+      QWEN_ACP_DIALECT,
+    );
+    expect(resolveAcpDialect({ command: "QWEN.EXE" })).toBe(QWEN_ACP_DIALECT);
+    expect(
+      resolveAcpDialect({
+        command: "npx",
+        args: ["-y", "@qwen-code/qwen-code@0.27.2", "--acp"],
+      }),
+    ).toBe(QWEN_ACP_DIALECT);
+    expect(
+      resolveAcpDialect({
+        command: "npx",
+        args: ["--yes", "-q", "@qwen-code/qwen-code", "--acp"],
+      }),
+    ).toBe(QWEN_ACP_DIALECT);
+    expect(
+      resolveAcpDialect({
+        command: "npx",
+        args: ["@qwen-code/qwen-code"],
+      }),
+    ).toBe(QWEN_ACP_DIALECT);
+    expect(
+      resolveAcpDialect({
+        command: "npx",
+        args: ["-y", "@agentclientprotocol/claude-agent-acp@0.88.0"],
+      }),
+    ).toBe(GENERIC_ACP_DIALECT);
+  });
+
+  it("does not misidentify ambiguous npx flags as Qwen and leaves them to explicit dialect", () => {
+    expect(
+      resolveAcpDialect({
+        command: "npx",
+        args: [
+          "--package",
+          "@qwen-code/qwen-code",
+          "--package",
+          "other-acp",
+          "other-acp",
+        ],
+      }),
+    ).toBe(GENERIC_ACP_DIALECT);
+    expect(
+      resolveAcpDialect({
+        command: "npx",
+        args: ["--cache", "/tmp/npm-cache", "@qwen-code/qwen-code"],
+      }),
+    ).toBe(GENERIC_ACP_DIALECT);
+    expect(
+      resolveAcpDialect({
+        command: "npx",
+        args: ["--", "-y", "@qwen-code/qwen-code"],
+      }),
+    ).toBe(GENERIC_ACP_DIALECT);
+    expect(
+      resolveAcpDialect({
+        command: "npx",
+        args: ["-y", "other-acp", "@qwen-code/qwen-code"],
+      }),
+    ).toBe(GENERIC_ACP_DIALECT);
+    expect(
+      resolveAcpDialect({
+        command: "npx",
+        args: ["-y", "@qwen-code/qwen-code@npm:other-acp"],
+      }),
+    ).toBe(GENERIC_ACP_DIALECT);
+    expect(
+      resolveAcpDialect({
+        command: "npx",
+        args: ["-y", "@qwen-code/qwen-code@npm:@other/acp@1.0.0"],
+      }),
+    ).toBe(GENERIC_ACP_DIALECT);
+    expect(
+      resolveAcpDialect({
+        command: "npx",
+        args: ["-y", "@qwen-code/qwen-code@file:./other-acp"],
+      }),
+    ).toBe(GENERIC_ACP_DIALECT);
+    expect(
+      resolveAcpDialect({
+        dialectId: "qwen",
+        command: "npx",
+        args: ["--cache", "/tmp/npm-cache", "@qwen-code/qwen-code"],
+      }),
+    ).toBe(QWEN_ACP_DIALECT);
   });
 
   it("is generic for a dialect id it does not ship", () => {
@@ -70,7 +160,7 @@ describe("registerAcpDialect", () => {
 
   it("refuses an empty id and every id the bridge ships", () => {
     expect(() => registerAcpDialect({ id: " " })).toThrow("non-empty id");
-    for (const id of ["acp", "cursor", "grok", "omp", "opencode"]) {
+    for (const id of ["acp", "cursor", "grok", "omp", "opencode", "qwen"]) {
       expect(() => registerAcpDialect({ id })).toThrow(
         `ACP dialect id "${id}" is reserved by a built-in dialect.`,
       );
@@ -381,5 +471,19 @@ describe("grok session context _meta", () => {
     expect(
       grokContextUsageFromPromptResult({ stopReason: "end_turn" }),
     ).toBeUndefined();
+  });
+});
+
+describe("qwen prompt request _meta", () => {
+  it("stamps qwen.submittedPrompt with the verbatim user text", () => {
+    expect(
+      QWEN_ACP_DIALECT.promptRequestMeta?.({
+        clientRequestId: "creq_abcdefghij",
+        text: "summarize the diff",
+      }),
+    ).toEqual({
+      "qwen.submittedPrompt": "summarize the diff",
+    });
+    expect(GENERIC_ACP_DIALECT.promptRequestMeta).toBeUndefined();
   });
 });

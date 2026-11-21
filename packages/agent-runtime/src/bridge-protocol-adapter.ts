@@ -348,6 +348,9 @@ export function createBridgeProtocolAdapter(
               providerThreadId: command.providerThreadId,
               input: command.input,
               clientRequestId: command.clientRequestId,
+              ...(command.originalUserText !== undefined
+                ? { originalUserText: command.originalUserText }
+                : {}),
               options: toBridgeWireOptions(
                 command.options,
                 options.staticProviderOptions,

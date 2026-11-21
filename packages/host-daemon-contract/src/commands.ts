@@ -19,6 +19,7 @@ import {
   providerForkSchema,
   runtimeThreadExecutionOptionsSchema,
   clientTurnRequestIdSchema,
+  originalUserTextSchema,
   jsonObjectSchema,
   jsonValueSchema,
   providerNativeRootSetSchema,
@@ -283,6 +284,7 @@ const threadStartCommandSchema = hostDaemonThreadTargetSchema
     requestId: clientTurnRequestIdSchema,
     input: z.array(promptInputSchema),
     inputGroups: z.array(z.array(promptInputSchema).min(1)).min(1).optional(),
+    originalUserText: originalUserTextSchema.optional(),
     threadStoragePath: z.string().min(1).optional(),
     fork: z
       .object({
@@ -345,6 +347,7 @@ const turnSubmitCommandSchema = hostDaemonThreadTargetSchema
     bridgeLaunch: hostDaemonBridgeLaunchSchema,
     resumeContext: turnResumeContextSchema,
     target: turnSubmitTargetSchema,
+    originalUserText: originalUserTextSchema.optional(),
   })
   .strict()
   .superRefine(refineGroupedInputMatchesFlatInput);

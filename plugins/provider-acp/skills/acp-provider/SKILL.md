@@ -186,7 +186,7 @@ restart is needed.
   launch-time reasoning flags, `nativeReasoning` for ACP
   `session/set_config_option` reasoning, and `permissionCli` for
   permission-mode launch flags.
-- `dialect` (`cursor`, `opencode`, `omp`, or `grok`) selects the vendor side
+- `dialect` (`cursor`, `opencode`, `omp`, `grok`, or `qwen`) selects the vendor side
   channels bb reads.
 - `nativeSkillRoots` adds native skills to the composer: a `user` list resolved
   from the target host's home directory and a `project` list resolved from the

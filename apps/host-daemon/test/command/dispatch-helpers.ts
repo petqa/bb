@@ -94,6 +94,7 @@ interface FakeRuntimeState {
   archivedThreadId: string | undefined;
   ranTurnClientRequestId: ClientTurnRequestId | undefined;
   ranTurnInput: PromptInput[] | undefined;
+  ranTurnOriginalUserText: string | undefined;
   ranTurnText: string | undefined;
   renamedTitle: string | undefined;
   resumedBridgeLaunch: AgentRuntimeBridgeLaunch | undefined;
@@ -107,6 +108,7 @@ interface FakeRuntimeState {
   startedEnvironmentId: string | undefined;
   startedInput: PromptInput[] | undefined;
   startedInstructions: string | undefined;
+  startedOriginalUserText: string | undefined;
   startedThreadId: string | undefined;
   steeredClientRequestId: ClientTurnRequestId | undefined;
   steeredTurnId: string | undefined;
@@ -174,6 +176,7 @@ export function createFakeRuntime() {
     archivedThreadId: undefined,
     ranTurnClientRequestId: undefined,
     ranTurnInput: undefined,
+    ranTurnOriginalUserText: undefined,
     ranTurnText: undefined,
     renamedTitle: undefined,
     resumedBridgeLaunch: undefined,
@@ -187,6 +190,7 @@ export function createFakeRuntime() {
     startedEnvironmentId: undefined,
     startedInput: undefined,
     startedInstructions: undefined,
+    startedOriginalUserText: undefined,
     startedThreadId: undefined,
     steeredClientRequestId: undefined,
     steeredTurnId: undefined,
@@ -232,6 +236,7 @@ export function createFakeRuntime() {
       state.startedDynamicTools = args.dynamicTools;
       state.startedInput = args.input;
       state.startedInstructions = args.instructions;
+      state.startedOriginalUserText = args.originalUserText;
       providerSessionsByThreadId.set(args.threadId, {
         providerId: args.providerId,
         providerThreadId: `provider-${args.threadId}`,
@@ -266,6 +271,7 @@ export function createFakeRuntime() {
         firstInput?.type === "text" ? firstInput.text : undefined;
       state.ranTurnClientRequestId = args.clientRequestId;
       state.ranTurnInput = args.input;
+      state.ranTurnOriginalUserText = args.originalUserText;
       activeTurnsByThreadId.set(args.threadId, `turn-${nextTurnNumber++}`);
       return { status: "started" };
     },

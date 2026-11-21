@@ -242,6 +242,9 @@ export const promptInputSchema = z.discriminatedUnion("type", [
 ]);
 export type PromptInput = z.infer<typeof promptInputSchema>;
 
+export const originalUserTextSchema = z.string().min(1);
+export type OriginalUserText = z.infer<typeof originalUserTextSchema>;
+
 export function flattenPromptInputGroups(
   inputGroups: readonly PromptInput[][],
 ): PromptInput[] {

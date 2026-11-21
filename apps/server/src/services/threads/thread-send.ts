@@ -27,6 +27,7 @@ import {
   buildThreadStartCommand,
   prepareTurnSubmitCommandPayload,
 } from "./thread-commands.js";
+import { userAuthoredTurnText } from "./original-user-input.js";
 import {
   appendPreparedClientTurnRequestedEventWithNotificationInTransaction,
   type AppendedClientTurnRequestWithNotification,
@@ -549,6 +550,8 @@ async function sendThreadMessageWithoutContextClear(
     ensureThreadIsNotAwaitingUserInteraction(deps, thread.id);
   }
   const mode = resolveSendMode(thread, payload.mode);
+  const submittedInput = payload.input;
+  const submittedInputGroups = payload.inputGroups;
   ensureRuntimeCanAcceptActiveSend(deps, args);
   if (mode === "start") {
     ensureThreadCanStartRequest(thread);
@@ -676,6 +679,10 @@ async function sendThreadMessageWithoutContextClear(
     originPluginId: args.originPluginId,
     ...(args.retryOf !== undefined ? { retryOf: args.retryOf } : {}),
     senderThreadId,
+    submittedInput,
+    ...(submittedInputGroups !== undefined
+      ? { submittedInputGroups }
+      : {}),
     ...(args.systemNotice !== undefined
       ? {
           systemMessageKind: args.systemNotice.kind,
@@ -717,10 +724,26 @@ async function sendThreadMessageWithoutContextClear(
   const requestId = createClientTurnRequestId();
 
   if (mode === "start") {
+    const originalUserText = userAuthoredTurnText({
+      initiator,
+      input: submittedInput,
+      ...(submittedInputGroups !== undefined
+        ? { inputGroups: submittedInputGroups }
+        : {}),
+      mode,
+      ...(args.retryOf !== undefined ? { retryOf: args.retryOf } : {}),
+      ...(args.systemNotice !== undefined
+        ? { systemMessageKind: args.systemNotice.kind }
+        : {}),
+      ...(args.originPluginId !== undefined && args.originPluginId !== null
+        ? { originPluginId: args.originPluginId }
+        : {}),
+    });
     const commandArgs = {
       thread,
       input,
       ...(inputGroups !== undefined ? { inputGroups } : {}),
+      ...(originalUserText !== undefined ? { originalUserText } : {}),
       requestId,
       execution,
       permissionEscalation,

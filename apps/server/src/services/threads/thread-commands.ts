@@ -12,6 +12,7 @@ import {
   RuntimeThreadExecutionOptions,
   Thread,
   ClientTurnRequestId,
+  OriginalUserText,
   EnvironmentStatus,
   promptInputHasCommandMention,
 } from "@bb/domain";
@@ -85,6 +86,7 @@ export interface ThreadStartCommandArgs {
   projectId: string;
   providerId: string;
   requestId: ClientTurnRequestId;
+  originalUserText?: OriginalUserText;
   syncGeneratedTitle: boolean;
   thread: Thread;
 }
@@ -104,6 +106,7 @@ interface PreparedTurnSubmitCommandBuildArgs {
   permissionEscalation: PermissionEscalation;
   input: PromptInput[];
   inputGroups?: PromptInput[][];
+  originalUserText?: OriginalUserText;
   providerThreadId: string;
   runtimeContext: ResolvedThreadRuntimeCommandConfig;
   target: TurnSubmitTarget;
@@ -116,6 +119,7 @@ interface PrepareTurnSubmitCommandPayloadArgs {
   permissionEscalation: PermissionEscalation;
   input: PromptInput[];
   inputGroups?: PromptInput[][];
+  originalUserText?: OriginalUserText;
   providerThreadId?: string;
   target: TurnSubmitTarget;
   thread: Thread;
@@ -328,6 +332,9 @@ export async function buildThreadStartCommand(
     ...(args.inputGroups !== undefined
       ? { inputGroups: args.inputGroups }
       : {}),
+    ...(args.originalUserText !== undefined
+      ? { originalUserText: args.originalUserText }
+      : {}),
     options: toRuntimeExecutionOptions({
       ...args,
       deps,
@@ -361,6 +368,9 @@ function buildPreparedTurnSubmitCommandPayload(
     input: args.input,
     ...(args.inputGroups !== undefined
       ? { inputGroups: args.inputGroups }
+      : {}),
+    ...(args.originalUserText !== undefined
+      ? { originalUserText: args.originalUserText }
       : {}),
     options: toRuntimeExecutionOptions({
       ...args,
@@ -420,6 +430,9 @@ export async function prepareTurnSubmitCommandPayload(
     input: args.input,
     ...(args.inputGroups !== undefined
       ? { inputGroups: args.inputGroups }
+      : {}),
+    ...(args.originalUserText !== undefined
+      ? { originalUserText: args.originalUserText }
       : {}),
     providerThreadId,
     runtimeContext,

@@ -264,6 +264,9 @@ export async function startThread(
       contributedEnv: command.contributedEnv,
       clientRequestId: command.requestId,
       input: staged.input,
+      ...(command.originalUserText !== undefined
+        ? { originalUserText: command.originalUserText }
+        : {}),
       options: command.options,
       instructions: command.instructions,
       dynamicTools: command.dynamicTools,
@@ -359,6 +362,9 @@ async function runSubmittedTurn(
     options: command.options,
     contributedEnv: command.resumeContext.contributedEnv,
     instructions: command.resumeContext.instructions,
+    ...(command.originalUserText !== undefined
+      ? { originalUserText: command.originalUserText }
+      : {}),
   });
   if (result.status === "unconfirmed") {
     throw new CommandDispatchError(

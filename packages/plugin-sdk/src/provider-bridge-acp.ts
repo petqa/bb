@@ -31,7 +31,7 @@
  * `_meta["x.ai/tool"]` on every tool event, Cursor reports sub-agents
  * through a vendor `cursor/task` request. A dialect is a small module that
  * reads those channels; the bridge ships `acp` (the generic one), `cursor`,
- * `grok`, `omp` and `opencode`, named by id in the registration's bridge
+ * `grok`, `omp`, `opencode` and `qwen`, named by id in the registration's bridge
  * options (`acpDialect`). A plugin supplies its own with
  * `experimental_registerAcpDialect`, called at module load in the same
  * `bb.host` artifact that re-exports the bridge:

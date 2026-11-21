@@ -38,6 +38,7 @@ import {
   type TurnRequestRetryMarker,
 } from "./thread-events.js";
 import { requestThreadStart } from "./thread-lifecycle.js";
+import { userAuthoredTurnText } from "./original-user-input.js";
 import type { DispatchAuthor } from "./dispatch-author.js";
 import { resolvePermissionEscalation } from "./thread-runtime-config.js";
 import {
@@ -69,10 +70,12 @@ interface RequestThreadProvisionArgs {
   execution: ResolvedThreadExecutionOptions;
   fork: ThreadForkDescriptor | null;
   input: PromptInput[];
+  inputGroups?: PromptInput[][];
   originPluginId: string | null;
   providerInput?: PromptInput[];
   retryOf?: TurnRequestRetryMarker;
   startedOnBehalfOf: StartedOnBehalfOf | null;
+  submittedInput?: PromptInput[];
   thread: Thread;
   titleProvided: boolean;
 }
@@ -87,6 +90,8 @@ interface RequestThreadTargetReprovisionArgs {
   originPluginId: string | null;
   retryOf?: TurnRequestRetryMarker;
   senderThreadId: string | null;
+  submittedInput?: PromptInput[];
+  submittedInputGroups?: PromptInput[][];
   systemMessageKind?: SystemMessageKind;
   systemMessageSubject?: SystemMessageSubject | null;
   provider: {
@@ -287,6 +292,9 @@ async function startThreadIfEnvironmentReady(
       ? { inputGroups: args.context.request.inputGroups }
       : {}),
     requestId: args.context.request.clientRequestId,
+    ...(args.context.request.originalUserText !== undefined
+      ? { originalUserText: args.context.request.originalUserText }
+      : {}),
     execution,
     permissionEscalation: resolvePermissionEscalation({
       initiator: args.context.request.initiator,
@@ -339,6 +347,18 @@ export function requestThreadProvision(
       source: "spawn",
     });
 
+    const startupOriginalUserText = userAuthoredTurnText({
+      initiator,
+      input: args.submittedInput ?? args.input,
+      ...(args.inputGroups !== undefined
+        ? { inputGroups: args.inputGroups }
+        : {}),
+      mode: "start",
+      ...(args.retryOf !== undefined ? { retryOf: args.retryOf } : {}),
+      ...(args.originPluginId !== undefined && args.originPluginId !== null
+        ? { originPluginId: args.originPluginId }
+        : {}),
+    });
     const context = createThreadStartup({
       clientRequestId: request.requestId,
       environmentIntent: args.environmentIntent,
@@ -348,6 +368,9 @@ export function requestThreadProvision(
       initiator,
       seedWithoutRun: args.startedOnBehalfOf !== null,
       titleProvided: args.titleProvided,
+      ...(startupOriginalUserText !== undefined
+        ? { originalUserText: startupOriginalUserText }
+        : {}),
     });
     saveThreadProvisionContext({
       replace: true,
@@ -407,6 +430,22 @@ export function requestThreadTargetReprovision(
 ): RequestedThreadProvision {
   return deps.db.transaction(() => {
     const request = appendReprovisionTurnRequest(deps, args);
+    const submittedInputGroups = args.submittedInputGroups ?? args.inputGroups;
+    const startupOriginalUserText = userAuthoredTurnText({
+      initiator: args.initiator,
+      input: args.submittedInput ?? args.input,
+      ...(submittedInputGroups !== undefined
+        ? { inputGroups: submittedInputGroups }
+        : {}),
+      mode: "start",
+      ...(args.retryOf !== undefined ? { retryOf: args.retryOf } : {}),
+      ...(args.originPluginId !== undefined && args.originPluginId !== null
+        ? { originPluginId: args.originPluginId }
+        : {}),
+      ...(args.systemMessageKind !== undefined
+        ? { systemMessageKind: args.systemMessageKind }
+        : {}),
+    });
     const context = createThreadStartup({
       clientRequestId: request.requestId,
       environmentIntent:
@@ -429,6 +468,9 @@ export function requestThreadTargetReprovision(
       input: args.input,
       ...(args.inputGroups !== undefined
         ? { inputGroups: args.inputGroups }
+        : {}),
+      ...(startupOriginalUserText !== undefined
+        ? { originalUserText: startupOriginalUserText }
         : {}),
       initiator: args.initiator,
       seedWithoutRun: false,

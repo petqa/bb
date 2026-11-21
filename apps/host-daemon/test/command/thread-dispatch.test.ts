@@ -1788,6 +1788,7 @@ describe("thread command dispatch", () => {
         threadId: "thread-1",
         requestId: runRequestId,
         input: [textPromptInput("hello")],
+        originalUserText: "hello",
         options: {
           model: "gpt-5",
           serviceTier: "default",
@@ -1824,6 +1825,7 @@ describe("thread command dispatch", () => {
         threadId: "thread-1",
         requestId: steerRequestId,
         input: [textPromptInput("adjust")],
+        originalUserText: "adjust",
         options: {
           model: "gpt-5",
           serviceTier: "default",
@@ -1856,6 +1858,7 @@ describe("thread command dispatch", () => {
     expect(runResult).toEqual({ trace: { spans: [] } });
     expect(steerResult).toEqual({ trace: { spans: [] } });
     expect(harness.runtimeState.ranTurnText).toBe("hello");
+    expect(harness.runtimeState.ranTurnOriginalUserText).toBe("hello");
     expect(harness.runtimeState.ranTurnClientRequestId).toBe(runRequestId);
     expect(harness.runtimeState.steeredTurnId).toBe("turn-1");
     expect(harness.runtimeState.steeredClientRequestId).toBe(steerRequestId);

@@ -628,6 +628,8 @@ function terminalDataBase64(byteLength: number): string {
 }
 
 const INTENTIONAL_OPTIONAL_HOST_DAEMON_FIELDS: Record<string, string> = {
+  "hostDaemonCommandSchema.originalUserText":
+    "thread.start and turn.submit carry the author-provenanced plain text only for a fresh single-block human turn; agent tells, retries, steers, grouped drains, system notices, and non-text turns omit it.",
   "hostDaemonCommandSchema.resolution.description":
     "the interaction.resolve command's resolution is the persisted union, so it also admits the plugin_submitted arm and the description a plugin's describeSubmission returned. It never reaches the wire: a plugin interaction is settled in the server against its waiting requestInput promise and never queues a daemon command, so an older daemon never sees the field.",
   "hostDaemonCommandSchema.resolution.description.detail":
@@ -1086,7 +1088,7 @@ describe("host-daemon command schemas", () => {
   });
 
   it("uses the current host-daemon protocol version", () => {
-    expect(HOST_DAEMON_PROTOCOL_VERSION).toBe(276);
+    expect(HOST_DAEMON_PROTOCOL_VERSION).toBe(277);
     expect(HOST_ARTIFACT_MAX_BYTES).toBe(256 * 1024 * 1024);
   });
 
@@ -1122,7 +1124,8 @@ describe("host-daemon command schemas", () => {
     expect(contract.isCompatibleHostDaemonProtocolVersion(273)).toBe(false);
     expect(contract.isCompatibleHostDaemonProtocolVersion(274)).toBe(false);
     expect(contract.isCompatibleHostDaemonProtocolVersion(275)).toBe(false);
-    expect(contract.isCompatibleHostDaemonProtocolVersion(276)).toBe(true);
+    expect(contract.isCompatibleHostDaemonProtocolVersion(276)).toBe(false);
+    expect(contract.isCompatibleHostDaemonProtocolVersion(277)).toBe(true);
     expect(contract.hostDaemonSupportsDesktopBrokerProof(247)).toBe(false);
     expect(contract.hostDaemonSupportsDesktopBrokerProof(248)).toBe(true);
   });
@@ -2322,6 +2325,46 @@ describe("host-daemon command schemas", () => {
         (reason) => reason.trim().length > 0,
       ),
     ).toBe(true);
+  });
+
+  it("accepts optional originalUserText on turn.submit", () => {
+    const parsed = hostDaemonCommandSchema.parse({
+      type: "turn.submit",
+      bridgeLaunch: BRIDGE_LAUNCH,
+      environmentId: "env_123",
+      threadId: "thr_123",
+      requestId: CLIENT_REQUEST_ID,
+      input: [{ type: "text", text: "hello", mentions: [] }],
+      originalUserText: "hello",
+      options: {
+        model: "gpt-5",
+        serviceTier: "default",
+        reasoningLevel: "medium",
+        providerOptions: {},
+        permissionMode: "full",
+        permissionScope: "full",
+        approvalReviewer: null,
+        permissionEscalation: null,
+      },
+      resumeContext: {
+        bridgeLaunch: BRIDGE_LAUNCH,
+        workspaceContext: {
+          workspacePath: "/tmp/workspace",
+        },
+        projectId: "proj_123",
+        providerId: "codex",
+        providerThreadId: "provider_123",
+        instructions: "Be a helpful coding agent.",
+        dynamicTools: [],
+        contributedEnv: [],
+        injectedSkillSources: [],
+        instructionMode: "append",
+      },
+      target: { mode: "start" },
+    });
+    expect(parsed).toMatchObject({
+      originalUserText: "hello",
+    });
   });
 
   it("requires requestId, resumeContext, and target for turn.submit", () => {

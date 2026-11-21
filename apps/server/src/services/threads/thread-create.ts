@@ -87,6 +87,7 @@ interface CreateProvisioningThreadArgs {
   fork: ThreadForkPoint | null;
   request: ThreadCreateServiceRequest;
   providerInput?: ThreadCreateServiceRequestInput["input"];
+  submittedInput?: ThreadCreateServiceRequestInput["input"];
 }
 
 interface ResolveForkPointArgs {
@@ -477,6 +478,9 @@ async function createPendingThreadAndAttemptFirstDispatch(
     ...(args.providerInput !== undefined
       ? { providerInput: args.providerInput }
       : {}),
+    ...(args.submittedInput !== undefined
+      ? { submittedInput: args.submittedInput }
+      : {}),
     startedOnBehalfOf: args.request.startedOnBehalfOf,
     titleProvided: Boolean(args.request.title),
   };
@@ -628,6 +632,7 @@ export async function createThreadFromRequest(
     );
   }
   const pluginMetadata = resolveCreateThreadPluginMetadata(rawRequestInput);
+  const submittedInput = rawRequestInput.input;
   const requestInput = { ...rawRequestInput };
   requestInput.input = (
     await appendPluginMentionContext({ input: requestInput.input })
@@ -873,6 +878,7 @@ export async function createThreadFromRequest(
     ...(options.providerInput !== undefined
       ? { providerInput: options.providerInput }
       : {}),
+    ...(requestInput.input !== submittedInput ? { submittedInput } : {}),
     request,
   };
   const thread = await createPendingThreadAndAttemptFirstDispatch(deps, {

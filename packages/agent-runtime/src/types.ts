@@ -7,6 +7,7 @@ import type {
   JsonObject,
   PendingInteractionCreate,
   PendingInteractionResolution,
+  OriginalUserText,
   PromptInput,
   ProviderFork,
   ProviderRecoveryKind,
@@ -135,6 +136,7 @@ export interface StartThreadArgs {
   input?: PromptInput[];
   options: AgentRuntimeExecutionOptions;
   instructions?: string;
+  originalUserText?: OriginalUserText;
   dynamicTools?: DynamicTool[];
   instructionMode?: InstructionMode;
   fork?: {
@@ -198,6 +200,7 @@ export interface RunTurnArgs {
   options: AgentRuntimeExecutionOptions;
   contributedEnv?: readonly AgentRuntimeContributedEnvEntry[];
   instructions?: string;
+  originalUserText?: OriginalUserText;
 }
 
 export type RunTurnResult = { status: "started" } | { status: "unconfirmed" };

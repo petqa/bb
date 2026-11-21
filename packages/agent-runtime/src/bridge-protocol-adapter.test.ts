@@ -234,6 +234,39 @@ describe("fork narrowing", () => {
 });
 
 describe("options mapping", () => {
+  it("carries turn/start originalUserText through to the bridge params", () => {
+    const adapter = makeAdapter({ acpLaunchSpec: { command: "echo" } });
+    const plan = adapter.buildCommandPlan({
+      type: "turn/start",
+      threadId: "thr_1",
+      providerThreadId: "p_1",
+      input: [{ type: "text", text: "hi", mentions: [] }],
+      clientRequestId: "creq_abcdefghjk",
+      originalUserText: "hi",
+      options: { ...fullModeOptions },
+    });
+    expect(plan).toMatchObject({
+      kind: "request",
+      params: {
+        originalUserText: "hi",
+      },
+    });
+  });
+
+  it("omits bridge originalUserText params when the command carries none", () => {
+    const adapter = makeAdapter({ acpLaunchSpec: { command: "echo" } });
+    const plan = adapter.buildCommandPlan({
+      type: "turn/start",
+      threadId: "thr_1",
+      providerThreadId: "p_1",
+      input: [{ type: "text", text: "hi", mentions: [] }],
+      clientRequestId: "creq_abcdefghjk",
+      options: { ...fullModeOptions },
+    });
+    expect(
+      (plan as { params: Record<string, unknown> }).params,
+    ).not.toHaveProperty("originalUserText");
+  });
   it("keeps core fields top-level and merges the plugin-derived bag over the static options", () => {
     const adapter = makeAdapter({ acpLaunchSpec: { command: "echo" } });
     const plan = adapter.buildCommandPlan({

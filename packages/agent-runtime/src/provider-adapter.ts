@@ -3,6 +3,7 @@ import type {
   DynamicTool,
   InstructionMode,
   JsonObject,
+  OriginalUserText,
   PromptInput,
   PromptMode,
   ReasoningLevel,
@@ -99,6 +100,7 @@ export type AdapterCommand =
       input: PromptInput[];
       clientRequestId: ClientTurnRequestId;
       options: ProviderExecutionContext;
+      originalUserText?: OriginalUserText;
     }
   | {
       type: "turn/steer";

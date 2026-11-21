@@ -114,6 +114,7 @@ export const pendingThreadStartContextSchema = z.object({
   historyCopy: z.literal(FORK_HISTORY_COPY_MARK).optional(),
   /** Provider-facing input when it differs from the persisted start seed. */
   providerInput: z.array(promptInputSchema).optional(),
+  submittedInput: z.array(promptInputSchema).optional(),
   startedOnBehalfOf: startedOnBehalfOfSchema.nullable(),
   titleProvided: z.boolean(),
 });
@@ -959,10 +960,17 @@ async function admitPendingThread(
           execution,
           fork: startContext.fork,
           input: args.payload.input,
+          ...(args.payload.inputGroups !== undefined
+            ? { inputGroups: args.payload.inputGroups }
+            : {}),
           originPluginId: args.originPluginId,
           ...(startContext.providerInput === undefined
             ? {}
             : { providerInput: startContext.providerInput }),
+          ...(startContext.submittedInput !== undefined &&
+          (args.claimed === null || args.claimed.length <= 1)
+            ? { submittedInput: startContext.submittedInput }
+            : {}),
           ...(args.retryOf !== undefined ? { retryOf: args.retryOf } : {}),
           startedOnBehalfOf: startContext.startedOnBehalfOf,
           titleProvided: startContext.titleProvided,

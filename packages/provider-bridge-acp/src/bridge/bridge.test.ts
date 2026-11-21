@@ -6586,4 +6586,97 @@ describe("acp bridge: live session state", () => {
     await completeTurnWith(providerThreadId, "hello", executionOptions({}));
     expect(threadEventsOfType("thread/extensionState/updated")).toEqual([]);
   });
+
+  it("attaches qwen.submittedPrompt _meta to session/prompt for Qwen dialect turns and preserves it across busy retries", async () => {
+    const requestLog = join(workspaceDir, "qwen-requests.jsonl");
+    const { providerThreadId } = await startThread({
+      dialectId: "qwen",
+      instructions: "Be terse.",
+      envVars: {
+        FAKE_ACP_REQUEST_LOG: requestLog,
+        FAKE_ACP_SESSION_BUSY_PROMPTS: "1",
+      },
+    });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const turnId = sendTurnRequest("turn/start", providerThreadId, {
+        input: [{ type: "text", text: "first prompt", mentions: [] }],
+        originalUserText: "first prompt",
+      });
+      expect((await waitForResponse(turnId)).error).toBeUndefined();
+      await waitFor(
+        () =>
+          loggedAcpRequests(requestLog).filter(
+            (request) => request.method === "session/prompt",
+          ).length === 1
+            ? true
+            : undefined,
+        "initial busy session/prompt",
+      );
+      await advanceBusyQuietTimer();
+      expect(await waitForTurnCompleted()).toMatchObject({
+        status: "completed",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+
+    const completedBeforeFollowUp = threadEventsOfType("turn/completed").length;
+    const followUpTurnId = sendTurnRequest("turn/start", providerThreadId, {
+      input: [{ type: "text", text: "agent notice", mentions: [] }],
+    });
+    expect((await waitForResponse(followUpTurnId)).error).toBeUndefined();
+    const followUpCompleted = await waitFor(
+      () =>
+        threadEventsOfType("turn/completed").length > completedBeforeFollowUp
+          ? threadEventsOfType("turn/completed").at(-1)
+          : undefined,
+      "follow-up turn/completed",
+    );
+    expect(followUpCompleted).toMatchObject({
+      status: "completed",
+    });
+
+    const promptRequests = loggedAcpRequests(requestLog).filter(
+      (request) => request.method === "session/prompt",
+    );
+    expect(promptRequests).toHaveLength(3);
+    expect(promptRequests[0]?.params).toMatchObject({
+      sessionId: providerThreadId,
+      _meta: { "qwen.submittedPrompt": "first prompt" },
+      prompt: [
+        {
+          type: "text",
+          text: "<system_instructions>\nBe terse.\n</system_instructions>",
+        },
+        { type: "text", text: "first prompt" },
+      ],
+    });
+    expect(promptRequests[1]?.params).toMatchObject({
+      sessionId: providerThreadId,
+      _meta: { "qwen.submittedPrompt": "first prompt" },
+    });
+    expect(promptRequests[2]?.params).not.toHaveProperty("_meta");
+  });
+
+  it("omits session/prompt _meta for generic ACP sessions even when originalUserText is present", async () => {
+    const requestLog = join(workspaceDir, "generic-requests.jsonl");
+    const { providerThreadId } = await startThread({
+      envVars: { FAKE_ACP_REQUEST_LOG: requestLog },
+    });
+    const turnId = sendTurnRequest("turn/start", providerThreadId, {
+      input: [{ type: "text", text: "plain prompt", mentions: [] }],
+      originalUserText: "plain prompt",
+    });
+    expect((await waitForResponse(turnId)).error).toBeUndefined();
+    expect(await waitForTurnCompleted()).toMatchObject({
+      status: "completed",
+    });
+
+    const promptRequests = loggedAcpRequests(requestLog).filter(
+      (request) => request.method === "session/prompt",
+    );
+    expect(promptRequests).toHaveLength(1);
+    expect(promptRequests[0]?.params).not.toHaveProperty("_meta");
+  });
 });

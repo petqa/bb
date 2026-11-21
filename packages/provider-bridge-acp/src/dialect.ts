@@ -50,6 +50,10 @@ export interface AcpDialect {
     event: AcpToolCallUpdateEvent,
     call: AcpToolCallUpdateEvent,
   ): AcpToolCallUpdateEvent;
+  promptRequestMeta?(input: {
+    readonly clientRequestId: string;
+    readonly text: string;
+  }): Record<string, unknown> | undefined;
   readonly clientRequestMethods?: readonly string[];
   handleClientRequest?(
     method: string,
@@ -478,12 +482,18 @@ export const OPENCODE_ACP_DIALECT: AcpDialect = {
   presentModel: presentProviderPrefixedModel,
 };
 
+export const QWEN_ACP_DIALECT: AcpDialect = {
+  id: "qwen",
+  promptRequestMeta: ({ text }) => ({ "qwen.submittedPrompt": text }),
+};
+
 const BUILT_IN_DIALECTS: readonly AcpDialect[] = [
   GENERIC_ACP_DIALECT,
   CURSOR_ACP_DIALECT,
   GROK_ACP_DIALECT,
   OMP_ACP_DIALECT,
   OPENCODE_ACP_DIALECT,
+  QWEN_ACP_DIALECT,
 ];
 
 const DIALECTS_BY_ID = new Map<string, AcpDialect>(
@@ -507,17 +517,84 @@ const DIALECT_IDS_BY_COMMAND: Readonly<Record<string, string>> = {
   grok: GROK_ACP_DIALECT.id,
   omp: OMP_ACP_DIALECT.id,
   opencode: OPENCODE_ACP_DIALECT.id,
+  qwen: QWEN_ACP_DIALECT.id,
 };
+
+const DIALECT_IDS_BY_PACKAGE: Readonly<Record<string, string>> = {
+  "@qwen-code/qwen-code": QWEN_ACP_DIALECT.id,
+};
+
+function normalizedCommandName(command: string): string {
+  let name = basename(command).toLowerCase();
+  for (const suffix of [".exe", ".cmd", ".bat"]) {
+    if (name.endsWith(suffix)) {
+      name = name.slice(0, -suffix.length);
+      break;
+    }
+  }
+  return name;
+}
+
+const REGISTRY_VERSION_OR_TAG = /^[0-9A-Za-z._~^*-]+$/;
+
+function registryPackageNameOf(spec: string): string | undefined {
+  const separator = spec.indexOf("@", 1);
+  if (separator === -1) {
+    return spec;
+  }
+  const qualifier = spec.slice(separator + 1);
+  if (!REGISTRY_VERSION_OR_TAG.test(qualifier)) {
+    return undefined;
+  }
+  return spec.slice(0, separator);
+}
+
+const NPX_SAFE_BOOLEAN_FLAGS = new Set([
+  "-y",
+  "--yes",
+  "-q",
+  "--quiet",
+  "--no-install",
+]);
+
+function launchedPackageName(
+  commandName: string,
+  args: readonly string[] | undefined,
+): string | undefined {
+  if (!args || args.length === 0) {
+    return undefined;
+  }
+  if (commandName !== "npx") {
+    return undefined;
+  }
+  for (const arg of args) {
+    if (arg.startsWith("-")) {
+      if (NPX_SAFE_BOOLEAN_FLAGS.has(arg)) {
+        continue;
+      }
+      return undefined;
+    }
+    return registryPackageNameOf(arg);
+  }
+  return undefined;
+}
 
 export function resolveAcpDialect(launch: {
   dialectId?: string | undefined;
   command: string;
+  args?: readonly string[] | undefined;
 }): AcpDialect {
   if (launch.dialectId !== undefined) {
     return DIALECTS_BY_ID.get(launch.dialectId) ?? GENERIC_ACP_DIALECT;
   }
-  const byCommand = DIALECT_IDS_BY_COMMAND[basename(launch.command)];
-  return byCommand === undefined
+  const commandName = normalizedCommandName(launch.command);
+  const byCommand = DIALECT_IDS_BY_COMMAND[commandName];
+  if (byCommand !== undefined) {
+    return DIALECTS_BY_ID.get(byCommand) ?? GENERIC_ACP_DIALECT;
+  }
+  const pkg = launchedPackageName(commandName, launch.args);
+  const byPackage = pkg === undefined ? undefined : DIALECT_IDS_BY_PACKAGE[pkg];
+  return byPackage === undefined
     ? GENERIC_ACP_DIALECT
-    : (DIALECTS_BY_ID.get(byCommand) ?? GENERIC_ACP_DIALECT);
+    : (DIALECTS_BY_ID.get(byPackage) ?? GENERIC_ACP_DIALECT);
 }

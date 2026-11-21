@@ -402,6 +402,9 @@ export async function prepareReadyThreadTurnCommand(
       target: args.mayJoinRunningTurn
         ? { mode: "auto", expectedTurnId: null }
         : { mode: "start" },
+      ...(args.originalUserText !== undefined
+        ? { originalUserText: args.originalUserText }
+        : {}),
       thread: args.thread,
     });
     return {

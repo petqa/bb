@@ -765,7 +765,7 @@ selection), `reasoningCli` (launch-time reasoning flags), `nativeReasoning`
 `{"path": ..., "recursive": true, "ancestors": true}`), `permissionCli`
 (permission-mode launch flags), `supportsManualCompaction` (bb hides
 `/compact` otherwise), `providerUsage`, and `dialect` (`cursor`, `opencode`,
-`omp`, or `grok`).
+`omp`, `grok`, or `qwen`).
 
 Changes apply immediately, with no restart. A custom agent's command is local
 code execution and only works with a co-located daemon. The `customAcpAgents`
